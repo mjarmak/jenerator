@@ -1,0 +1,48 @@
+server:
+  port: 8081
+
+jenerator:
+  worker:
+    enabled: true
+    name: local-worker
+    control-plane-url: http://localhost:8080
+    token:
+    pairing-code:
+    poll-delay-ms: 15000
+    workspace-path: data/worker
+    ffmpeg-path: ffmpeg
+    qwen-health-url:
+  tts:
+    openai-api-key:
+    openai-model: gpt-4o-mini-tts
+    openai-voice: coral
+    openai-instructions: Clear, energetic entertainment narrator. Keep pacing tight and pronunciation natural.
+    qwen-url:
+    qwen-voice: default
+    fallback-to-silent: true
+  script:
+    openai-api-key:
+    openai-model: gpt-4.1-mini
+    max-output-tokens: 1800
+    fallback-to-template: true
+  images:
+    openai-api-key:
+    openai-model: gpt-image-2
+    quality: low
+    output-format: png
+    fallback-to-manifest: true
+  research:
+    tmdb-api-token:
+    tmdb-language: en-US
+    tmdb-time-window: week
+  browser:
+    source-capture-command: []
+    source-capture-shots: 6
+    source-capture-delay-seconds: 0
+  youtube:
+    mode: DRY_RUN
+    client-id:
+    client-secret:
+    refresh-token:
+    browser-upload-command: []
+    privacy-status: private

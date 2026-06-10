@@ -1,0 +1,14 @@
+target/
+node_modules/
+dist/
+out-tsc/
+.angular/
+.idea/
+.vscode/
+data/
+*.log
+*.tmp
+*.class
+frontend/.env
+control-plane/.env
+worker/.env

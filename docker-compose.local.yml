@@ -1,0 +1,40 @@
+services:
+  control-plane:
+    build:
+      context: .
+      dockerfile: control-plane/Dockerfile
+    environment:
+      JENERATOR_OWNER_API_KEY: change-me
+      JENERATOR_WORKER_PAIRING_CODE: change-me
+      JENERATOR_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/control-plane:/app/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - control-plane
+    ports:
+      - "4200:80"
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    depends_on:
+      - control-plane
+    environment:
+      JENERATOR_WORKER_CONTROL_PLANE_URL: http://control-plane:8080
+      JENERATOR_WORKER_PAIRING_CODE: change-me
+      JENERATOR_SCRIPT_OPENAI_API_KEY: ${JENERATOR_SCRIPT_OPENAI_API_KEY:-}
+      JENERATOR_TTS_OPENAI_API_KEY: ${JENERATOR_TTS_OPENAI_API_KEY:-}
+      JENERATOR_TTS_QWEN_URL: ${JENERATOR_TTS_QWEN_URL:-}
+      JENERATOR_IMAGES_OPENAI_API_KEY: ${JENERATOR_IMAGES_OPENAI_API_KEY:-}
+      JENERATOR_RESEARCH_TMDB_API_TOKEN: ${JENERATOR_RESEARCH_TMDB_API_TOKEN:-}
+      JENERATOR_YOUTUBE_MODE: DRY_RUN
+    volumes:
+      - ./data/worker:/app/data

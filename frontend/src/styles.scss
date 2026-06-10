@@ -1,0 +1,33 @@
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$orange-palette
+    ),
+    typography: Roboto,
+    density: 0
+  ));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f6f7f9;
+  color: #18202f;
+  font-family: Roboto, Arial, sans-serif;
+}
+
+button,
+input,
+textarea,
+mat-select {
+  letter-spacing: 0;
+}

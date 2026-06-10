@@ -1,0 +1,290 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: auto;
+  min-height: 64px;
+  padding: 8px 16px;
+  background: #ffffff;
+  color: #142033;
+  border-bottom: 1px solid #d9dee8;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.owner-key-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.owner-key-form mat-form-field {
+  flex: 1;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 480px) minmax(0, 1fr);
+  gap: 24px;
+  width: min(1500px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.create-panel,
+.jobs-panel {
+  min-width: 0;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.job-form {
+  display: grid;
+  gap: 16px;
+  padding: 16px 0 0;
+}
+
+.full {
+  width: 100%;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.source-grid .full {
+  grid-column: 1 / -1;
+}
+
+.toggle-row {
+  display: grid;
+  gap: 14px;
+}
+
+.toggle-row > div {
+  display: grid;
+  gap: 8px;
+}
+
+label {
+  color: #42526a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+mat-button-toggle-group {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-radius: 8px;
+}
+
+mat-button-toggle {
+  min-width: 0;
+}
+
+.warning-band {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #efb252;
+  border-radius: 8px;
+  background: #fff8eb;
+  color: #553100;
+}
+
+.upload-line,
+.form-actions,
+.artifact-row,
+.review-flags,
+.approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.job-list {
+  display: grid;
+  gap: 14px;
+}
+
+.job-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dde3ed;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.job-head,
+.job-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.job-head span,
+.job-card p,
+.job-meta {
+  color: #536174;
+  font-size: 13px;
+}
+
+.job-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.job-meta span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf5f7;
+  color: #244652;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e7edf5;
+  color: #27374d;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill.waiting {
+  background: #fff2d7;
+  color: #6a4200;
+}
+
+.status-pill.failed {
+  background: #ffe2e2;
+  color: #7a1f1f;
+}
+
+.approval-box {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #eef8f2;
+  border: 1px solid #b9dfc7;
+}
+
+.approval-box p {
+  color: #244931;
+  font-size: 13px;
+}
+
+.preview-player {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.review-grid .full {
+  grid-column: 1 / -1;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  color: #627086;
+}
+
+@media (max-width: 980px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    align-items: stretch;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .owner-key-form {
+    order: 3;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .control-grid,
+  .source-grid,
+  .review-grid,
+  mat-button-toggle-group {
+    grid-template-columns: 1fr;
+  }
+
+  .job-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "jenerator-source-capture-playwright",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.57.0"
+  }
+}

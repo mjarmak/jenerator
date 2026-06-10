@@ -1,0 +1,300 @@
+<mat-toolbar class="topbar">
+  <div class="brand">
+    <mat-icon>movie_creation</mat-icon>
+    <span>Jenerator</span>
+  </div>
+  <span class="spacer"></span>
+  <form class="owner-key-form" (ngSubmit)="saveOwnerKey(ownerKeyInput.value)">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Owner key</mat-label>
+      <input matInput #ownerKeyInput type="password" autocomplete="current-password" [value]="ownerKey()">
+    </mat-form-field>
+    <button mat-icon-button type="submit" matTooltip="Save owner key">
+      <mat-icon>key</mat-icon>
+    </button>
+  </form>
+  <button mat-icon-button matTooltip="Refresh jobs" (click)="loadJobs()">
+    <mat-icon>refresh</mat-icon>
+  </button>
+</mat-toolbar>
+
+<main class="shell">
+  <section class="create-panel">
+    <div class="section-heading">
+      <h1>Create Video</h1>
+      <span class="status-pill">{{ jobs().length }} jobs</span>
+    </div>
+
+    <form [formGroup]="jobForm" (ngSubmit)="createJob()" class="job-form">
+      @if (!ownerKey()) {
+        <div class="warning-band">
+          <mat-icon>key</mat-icon>
+          <span>Enter your owner key before creating or approving jobs from this device.</span>
+        </div>
+      }
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Prompt</mat-label>
+        <textarea matInput formControlName="prompt" rows="5" maxlength="4000"></textarea>
+        <mat-hint align="end">{{ promptLength() }}/4000</mat-hint>
+      </mat-form-field>
+
+      <div class="control-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Video type</mat-label>
+          <mat-select formControlName="videoType">
+            <mat-option value="SUMMARY">Summary</mat-option>
+            <mat-option value="RECAP">Recap</mat-option>
+            <mat-option value="TOP_LIST">Top list</mat-option>
+            <mat-option value="RECOMMENDATION">Recommendation</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Voice</mat-label>
+          <mat-select formControlName="voiceProvider">
+            <mat-option value="OPENAI_TTS">OpenAI TTS</mat-option>
+            <mat-option value="QWEN_LOCAL">Qwen local</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Media style</mat-label>
+          <mat-select formControlName="mediaStyle">
+            <mat-option value="CINEMATIC_RECAP">Cinematic recap</mat-option>
+            <mat-option value="FAST_NEWS">Fast news</mat-option>
+            <mat-option value="CLEAN_RECOMMENDATION">Clean recommendation</mat-option>
+            <mat-option value="TOP_LIST_COUNTDOWN">Top list countdown</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Visual source</mat-label>
+          <mat-select formControlName="visualSource">
+            <mat-option value="SOURCE_SCREENSHOTS">Source screenshots</mat-option>
+            <mat-option value="AI_GENERATED_IMAGES">AI images</mat-option>
+            <mat-option value="UPLOADED_ASSETS">Uploaded visuals</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Music asset id</mat-label>
+          <input matInput formControlName="musicAssetId">
+        </mat-form-field>
+      </div>
+
+      <div class="source-grid">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Source URL</mat-label>
+          <input matInput formControlName="sourceUrl" inputmode="url">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Source title</mat-label>
+          <input matInput formControlName="sourceTitle">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Season</mat-label>
+          <input matInput formControlName="seasonNumber" inputmode="numeric">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Episode</mat-label>
+          <input matInput formControlName="episodeNumber" inputmode="numeric">
+        </mat-form-field>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <label>Orientation</label>
+          <mat-button-toggle-group formControlName="orientation">
+            <mat-button-toggle value="PORTRAIT_9_16">
+              <mat-icon>stay_current_portrait</mat-icon>
+              9:16
+            </mat-button-toggle>
+            <mat-button-toggle value="LANDSCAPE_16_9">
+              <mat-icon>crop_landscape</mat-icon>
+              16:9
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <div>
+          <label>Duration</label>
+          <mat-button-toggle-group formControlName="durationPreset">
+            <mat-button-toggle value="ONE_MINUTE">
+              <mat-icon>timer</mat-icon>
+              1 min
+            </mat-button-toggle>
+            <mat-button-toggle value="AUTO_SHORT">
+              <mat-icon>bolt</mat-icon>
+              Short
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <div>
+          <label>Publish target</label>
+          <mat-button-toggle-group formControlName="publishTarget">
+            <mat-button-toggle value="YOUTUBE_SHORT">
+              <mat-icon>smart_display</mat-icon>
+              Short
+            </mat-button-toggle>
+            <mat-button-toggle value="YOUTUBE_VIDEO">
+              <mat-icon>ondemand_video</mat-icon>
+              Video
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </div>
+
+      @if (configurationWarning()) {
+        <div class="warning-band">
+          <mat-icon>warning</mat-icon>
+          <span>{{ configurationWarning() }}</span>
+          @if (formatSuggestionAvailable()) {
+            <button mat-button type="button" (click)="applyFormatSuggestion()">Fix</button>
+          }
+        </div>
+      }
+
+      <div class="upload-line">
+        <input #musicInput hidden type="file" accept="audio/*" (change)="uploadMusic($event)">
+        <button mat-stroked-button type="button" (click)="musicInput.click()">
+          <mat-icon>library_music</mat-icon>
+          Upload music
+        </button>
+        @if (uploadedMusicName()) {
+          <span>{{ uploadedMusicName() }}</span>
+        }
+      </div>
+
+      <div class="upload-line">
+        <input #visualInput hidden type="file" multiple accept="image/*,video/*" (change)="uploadVisuals($event)">
+        <button mat-stroked-button type="button" (click)="visualInput.click()">
+          <mat-icon>add_photo_alternate</mat-icon>
+          Upload visuals
+        </button>
+        @for (asset of uploadedVisualAssets(); track asset.id) {
+          <button mat-button type="button" (click)="removeVisualAsset(asset.id)">
+            <mat-icon>close</mat-icon>
+            {{ asset.filename }}
+          </button>
+        }
+      </div>
+
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="jobForm.invalid || !!configurationWarning() || creating()">
+          <mat-icon>add_circle</mat-icon>
+          Create job
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="jobs-panel">
+    <div class="section-heading">
+      <h2>Jobs</h2>
+      <mat-progress-bar *ngIf="loading()" mode="indeterminate"></mat-progress-bar>
+    </div>
+
+    <div class="job-list">
+      @for (job of jobs(); track job.id) {
+        <article class="job-card">
+          <div class="job-head">
+            <div>
+              <h3>{{ job.title || job.videoType }}</h3>
+              <span>{{ job.orientation }} &middot; {{ job.durationPreset }} &middot; {{ job.publishTarget }}</span>
+            </div>
+            <span class="status-pill" [class.waiting]="job.status === 'WAITING_FOR_APPROVAL'" [class.failed]="job.status === 'FAILED'">{{ job.status }}</span>
+          </div>
+
+          <p>{{ job.prompt }}</p>
+
+          <div class="job-meta">
+            <span>{{ job.width }}x{{ job.height }}</span>
+            <span>{{ job.targetSeconds }}s</span>
+            <span>{{ job.voiceProvider }}</span>
+            <span>{{ job.visualSource }}</span>
+          </div>
+
+          @if (job.steps.length) {
+            <mat-list>
+              @for (step of job.steps; track step.name) {
+                <mat-list-item>
+                  <mat-icon matListItemIcon>{{ stepIcon(step.status) }}</mat-icon>
+                  <div matListItemTitle>{{ step.name }} &middot; {{ step.status }}</div>
+                  <div matListItemLine>{{ step.message }}</div>
+                </mat-list-item>
+              }
+            </mat-list>
+          }
+
+          @if (job.artifacts.length) {
+            @if (previewArtifact(job); as preview) {
+              <video class="preview-player" controls [src]="preview.url"></video>
+            }
+
+            <div class="artifact-row">
+              @for (artifact of job.artifacts; track artifact.id) {
+                <a mat-stroked-button [href]="artifact.url" target="_blank" rel="noreferrer">
+                  <mat-icon>open_in_new</mat-icon>
+                  {{ artifact.type }}
+                </a>
+              }
+            </div>
+          }
+
+          @if (job.status === 'WAITING_FOR_APPROVAL') {
+            <div class="approval-box">
+              <div class="review-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Title</mat-label>
+                  <input matInput #reviewTitle maxlength="100" [value]="job.title || ''">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Tags</mat-label>
+                  <input matInput #reviewTags [value]="listText(job.tags)">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>Description</mat-label>
+                  <textarea matInput #reviewDescription rows="4" maxlength="5000" [value]="job.description || ''"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>Citations</mat-label>
+                  <textarea matInput #reviewCitations rows="3" [value]="lineText(job.citations)"></textarea>
+                </mat-form-field>
+              </div>
+
+              <div class="review-flags">
+                <mat-checkbox #madeForKids [checked]="job.madeForKids">Made for Kids</mat-checkbox>
+                <mat-checkbox #syntheticMedia [checked]="job.containsSyntheticMedia">Synthetic media</mat-checkbox>
+              </div>
+
+              <p>{{ uploadWarning() }}</p>
+              <div class="approval-actions">
+                <button mat-stroked-button (click)="saveReview(job, reviewTitle.value, reviewDescription.value, reviewTags.value, reviewCitations.value, madeForKids.checked, syntheticMedia.checked)">
+                  <mat-icon>save</mat-icon>
+                  Save review
+                </button>
+                <button mat-flat-button color="primary" (click)="approveUpload(job.id)">
+                  <mat-icon>cloud_upload</mat-icon>
+                  Approve upload
+                </button>
+              </div>
+            </div>
+          }
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>video_library</mat-icon>
+          <span>No jobs yet</span>
+        </div>
+      }
+    </div>
+  </section>
+</main>
