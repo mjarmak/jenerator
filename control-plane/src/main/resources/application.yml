@@ -16,6 +16,7 @@ management:
 jenerator:
   owner-api-key: change-me
   public-api-base-url: http://localhost:8080
+  state-storage-path: data/state
   asset-storage-path: data/assets
   artifact-storage-path: data/artifacts
   worker-pairing-code: change-me

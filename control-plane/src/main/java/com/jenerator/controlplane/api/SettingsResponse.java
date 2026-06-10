@@ -8,6 +8,9 @@ public record SettingsResponse(
         List<String> supportedDurationPresets,
         List<String> supportedPublishTargets,
         List<String> supportedVoiceProviders,
+        List<String> supportedContentCategories,
+        List<String> supportedEditorialWindows,
+        List<String> supportedVisualSources,
         String youtubeUploadWarning
 ) {
 }

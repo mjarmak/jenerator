@@ -7,6 +7,8 @@ import com.jenerator.common.model.EditorialWindow;
 import com.jenerator.common.model.MediaStyle;
 import com.jenerator.common.model.Orientation;
 import com.jenerator.common.model.PublishTarget;
+import com.jenerator.common.model.ResearchFocus;
+import com.jenerator.common.model.SourceScope;
 import com.jenerator.common.model.VideoType;
 import com.jenerator.common.model.VisualSource;
 import com.jenerator.common.model.VoiceProvider;
@@ -47,6 +49,50 @@ class JobRulesTest {
         assertThat(JobRules.validate(request)).contains("Uploaded visuals mode needs at least one uploaded visual asset.");
     }
 
+    @Test
+    void defaultsResearchFocusToTrending() {
+        CreateJobRequest request = new CreateJobRequest(
+                "recap the latest mystery release",
+                VideoType.RECAP,
+                Orientation.PORTRAIT_9_16,
+                DurationPreset.ONE_MINUTE,
+                PublishTarget.YOUTUBE_SHORT,
+                VoiceProvider.OPENAI_TTS,
+                MediaStyle.CINEMATIC_RECAP,
+                ContentCategory.MOVIES_AND_SERIES,
+                EditorialWindow.WEEK,
+                null,
+                8,
+                VisualSource.SOURCE_SCREENSHOTS,
+                "https://example.com/show",
+                "Example Show",
+                null,
+                1,
+                1,
+                null,
+                List.of(),
+                List.of(),
+                Map.of()
+        );
+
+        assertThat(request.researchFocus()).isEqualTo(ResearchFocus.TRENDING);
+    }
+
+    @Test
+    void validatesSourceScopeNumberRequirements() {
+        assertThat(requestWithScope(SourceScope.MOVIE, 1, null))
+                .contains("Movie jobs should not include season or episode numbers.");
+        assertThat(requestWithScope(SourceScope.SERIES_EPISODE, 1, null))
+                .contains("Series episode jobs need both season and episode numbers.");
+        assertThat(requestWithScope(SourceScope.SERIES_SEASON, null, null))
+                .contains("Series season jobs need a season number.");
+        assertThat(requestWithScope(SourceScope.SERIES_SEASON, 1, 2))
+                .contains("Series season jobs should not include an episode number.");
+        assertThat(requestWithScope(SourceScope.SERIES_SHOW, 1, null))
+                .contains("Whole-series jobs should not include season or episode numbers.");
+        assertThat(requestWithScope(SourceScope.SERIES_EPISODE, 1, 2)).isEmpty();
+    }
+
     private List<String> errors(Orientation orientation, PublishTarget publishTarget) {
         return JobRules.validate(new CreateJobRequest(
                 "recap the latest mystery release",
@@ -58,10 +104,12 @@ class JobRulesTest {
                 MediaStyle.CINEMATIC_RECAP,
                 ContentCategory.MOVIES_AND_SERIES,
                 EditorialWindow.WEEK,
+                ResearchFocus.TRENDING,
                 8,
                 VisualSource.SOURCE_SCREENSHOTS,
                 "https://example.com/show",
                 "Example Show",
+                SourceScope.SERIES_EPISODE,
                 1,
                 1,
                 null,
@@ -82,10 +130,12 @@ class JobRulesTest {
                 MediaStyle.CINEMATIC_RECAP,
                 ContentCategory.MOVIES_AND_SERIES,
                 EditorialWindow.WEEK,
+                ResearchFocus.TRENDING,
                 8,
                 visualSource,
                 sourceUrl,
                 "Example Show",
+                SourceScope.SERIES_EPISODE,
                 1,
                 1,
                 null,
@@ -93,5 +143,31 @@ class JobRulesTest {
                 visualAssetIds,
                 Map.of()
         );
+    }
+
+    private List<String> requestWithScope(SourceScope sourceScope, Integer seasonNumber, Integer episodeNumber) {
+        return JobRules.validate(new CreateJobRequest(
+                "recap the latest mystery release",
+                VideoType.RECAP,
+                Orientation.PORTRAIT_9_16,
+                DurationPreset.ONE_MINUTE,
+                PublishTarget.YOUTUBE_SHORT,
+                VoiceProvider.OPENAI_TTS,
+                MediaStyle.CINEMATIC_RECAP,
+                ContentCategory.MOVIES_AND_SERIES,
+                EditorialWindow.WEEK,
+                ResearchFocus.TRENDING,
+                8,
+                VisualSource.SOURCE_SCREENSHOTS,
+                "https://example.com/show",
+                "Example Show",
+                sourceScope,
+                seasonNumber,
+                episodeNumber,
+                null,
+                List.of(),
+                List.of(),
+                Map.of()
+        ));
     }
 }

@@ -11,6 +11,7 @@ const description = args['description-file']
 const tags = args.tags || '';
 const privacy = (args.privacy || 'private').toLowerCase();
 const madeForKids = args['made-for-kids'] === 'true';
+const containsSyntheticMedia = args['contains-synthetic-media'] === 'true';
 const userDataDir = args['user-data-dir'] ? path.resolve(args['user-data-dir']) : path.resolve('.youtube-profile');
 const manualReviewSeconds = number(args['manual-review-seconds'], 90);
 
@@ -44,6 +45,7 @@ if (tags) {
 await page.getByText(madeForKids ? /yes,.*made for kids/i : /no,.*not made for kids/i).first()
   .click({ timeout: 60_000 })
   .catch(() => undefined);
+await setSyntheticMediaDisclosure(page, containsSyntheticMedia);
 
 await next(page);
 await next(page);
@@ -73,6 +75,23 @@ async function fillTextbox(page, label, value) {
 
 async function next(page) {
   await page.getByText(/^next$/i).first().click({ timeout: 120_000 });
+}
+
+async function setSyntheticMediaDisclosure(page, containsSyntheticMedia) {
+  const section = page.locator('ytcp-video-metadata-editor-section, ytcp-video-metadata-editor-altered-content')
+    .filter({ hasText: /altered|synthetic|realistic/i })
+    .first();
+  if (await section.count().catch(() => 0)) {
+    await section.getByText(containsSyntheticMedia ? /^yes$/i : /^no$/i)
+      .first()
+      .click({ timeout: 30_000 })
+      .catch(() => undefined);
+    return;
+  }
+  const disclosureText = containsSyntheticMedia
+    ? /yes.*(altered|synthetic|realistic)|(altered|synthetic|realistic).*yes/i
+    : /no.*(altered|synthetic|realistic)|(altered|synthetic|realistic).*no/i;
+  await page.getByText(disclosureText).first().click({ timeout: 30_000 }).catch(() => undefined);
 }
 
 function parseArgs(values) {

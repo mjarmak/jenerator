@@ -11,6 +11,9 @@ const shots = number(args.shots, 6);
 const delay = number(args.delay, 0);
 const interval = number(args.interval, 4);
 const manualSeconds = number(args['manual-seconds'], 0);
+const autoPlay = args['auto-play'] === 'true';
+const skipKey = args['skip-key'] || '';
+const skipCount = number(args['skip-count'], 0);
 const userDataDir = args['user-data-dir'] ? path.resolve(args['user-data-dir']) : null;
 
 await mkdir(out, { recursive: true });
@@ -39,11 +42,15 @@ if (manualSeconds > 0) {
 if (delay > 0) {
   await page.waitForTimeout(delay * 1000);
 }
+if (autoPlay) {
+  await playVideos(page);
+}
 
 for (let index = 0; index < shots; index += 1) {
   const filename = `capture-${String(index + 1).padStart(2, '0')}.png`;
   await page.screenshot({ path: path.join(out, filename), fullPage: false });
   if (index < shots - 1) {
+    await skipForward(page, skipKey, skipCount);
     await page.waitForTimeout(interval * 1000);
   }
 }
@@ -84,4 +91,23 @@ function number(value, fallback) {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+async function playVideos(page) {
+  await page.evaluate(() => {
+    for (const video of document.querySelectorAll('video')) {
+      video.muted = true;
+      void video.play().catch(() => undefined);
+    }
+  }).catch(() => undefined);
+}
+
+async function skipForward(page, key, count) {
+  if (!key || count <= 0) {
+    return;
+  }
+  for (let index = 0; index < count; index += 1) {
+    await page.keyboard.press(key).catch(() => undefined);
+    await page.waitForTimeout(250);
+  }
 }

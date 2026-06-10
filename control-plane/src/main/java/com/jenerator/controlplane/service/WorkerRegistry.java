@@ -1,5 +1,6 @@
 package com.jenerator.controlplane.service;
 
+import com.jenerator.controlplane.api.WorkerStatusResponse;
 import com.jenerator.common.dto.WorkerHeartbeatRequest;
 import com.jenerator.common.dto.WorkerRegistrationRequest;
 import com.jenerator.common.dto.WorkerRegistrationResponse;
@@ -9,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,11 +37,15 @@ public class WorkerRegistry {
     }
 
     public String requireWorkerId(String workerToken) {
+        return requireWorker(workerToken).id();
+    }
+
+    public WorkerRecord requireWorker(String workerToken) {
         WorkerRecord record = workersByToken.get(workerToken);
         if (record == null) {
             throw new UnauthorizedWorkerException("Worker token is missing or invalid.");
         }
-        return record.id();
+        return record;
     }
 
     public void heartbeat(String workerId, WorkerHeartbeatRequest request) {
@@ -52,5 +59,24 @@ public class WorkerRegistry {
                         request.youtubeConfigured(),
                         request.details()
                 ));
+    }
+
+    public List<WorkerStatusResponse> listStatuses() {
+        Instant now = Instant.now();
+        return workersByToken.values()
+                .stream()
+                .sorted(Comparator.comparing(WorkerRecord::lastSeenAt).reversed())
+                .map(worker -> new WorkerStatusResponse(
+                        worker.id(),
+                        worker.name(),
+                        worker.registeredAt(),
+                        worker.lastSeenAt(),
+                        worker.online(now),
+                        worker.ffmpegAvailable(),
+                        worker.qwenAvailable(),
+                        worker.youtubeConfigured(),
+                        worker.details()
+                ))
+                .toList();
     }
 }

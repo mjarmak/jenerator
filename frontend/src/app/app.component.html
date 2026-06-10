@@ -13,7 +13,7 @@
       <mat-icon>key</mat-icon>
     </button>
   </form>
-  <button mat-icon-button matTooltip="Refresh jobs" (click)="loadJobs()">
+  <button mat-icon-button matTooltip="Refresh jobs and workers" (click)="refreshAll()">
     <mat-icon>refresh</mat-icon>
   </button>
 </mat-toolbar>
@@ -24,6 +24,46 @@
       <h1>Create Video</h1>
       <span class="status-pill">{{ jobs().length }} jobs</span>
     </div>
+
+    <div class="worker-strip" [class.online]="onlineWorkers().length" [class.locked]="!ownerKey().trim()">
+      <div class="worker-summary">
+        <mat-icon>{{ onlineWorkers().length ? 'desktop_windows' : 'desktop_access_disabled' }}</mat-icon>
+        <div>
+          <strong>{{ workerSummary() }}</strong>
+          <span>{{ workerSubtext() }}</span>
+        </div>
+      </div>
+      <button mat-icon-button type="button" matTooltip="Refresh worker status" (click)="loadWorkers()">
+        <mat-icon>sync</mat-icon>
+      </button>
+    </div>
+
+    @if (workers().length) {
+      <div class="worker-list">
+        @for (worker of workers(); track worker.id) {
+          <div class="worker-row">
+            <div>
+              <strong>{{ worker.name }}</strong>
+              <span>{{ worker.online ? 'Online' : 'Offline' }} &middot; last seen {{ worker.lastSeenAt | date:'short' }}</span>
+            </div>
+            <div class="capability-row">
+              <span class="capability" [class.enabled]="worker.ffmpegAvailable">
+                <mat-icon>{{ workerCapabilityIcon(worker.ffmpegAvailable) }}</mat-icon>
+                FFmpeg
+              </span>
+              <span class="capability" [class.enabled]="worker.qwenAvailable">
+                <mat-icon>{{ workerCapabilityIcon(worker.qwenAvailable) }}</mat-icon>
+                Qwen
+              </span>
+              <span class="capability" [class.enabled]="worker.youtubeConfigured">
+                <mat-icon>{{ workerCapabilityIcon(worker.youtubeConfigured) }}</mat-icon>
+                YouTube
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+    }
 
     <form [formGroup]="jobForm" (ngSubmit)="createJob()" class="job-form">
       @if (!ownerKey()) {
@@ -69,6 +109,34 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>Content</mat-label>
+          <mat-select formControlName="contentCategory">
+            <mat-option value="MOVIES">Movies</mat-option>
+            <mat-option value="SERIES">Series</mat-option>
+            <mat-option value="MOVIES_AND_SERIES">Movies + series</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Window</mat-label>
+          <mat-select formControlName="editorialWindow">
+            <mat-option value="WEEK">Week</mat-option>
+            <mat-option value="MONTH">Month</mat-option>
+            <mat-option value="YEAR">Year</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Research</mat-label>
+          <mat-select formControlName="researchFocus">
+            <mat-option value="TRENDING">Trending</mat-option>
+            <mat-option value="GROSSING">Grossing</mat-option>
+            <mat-option value="NEW_RELEASES">New releases</mat-option>
+            <mat-option value="POPULAR">Popular</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>Visual source</mat-label>
           <mat-select formControlName="visualSource">
             <mat-option value="SOURCE_SCREENSHOTS">Source screenshots</mat-option>
@@ -81,6 +149,11 @@
           <mat-label>Music asset id</mat-label>
           <input matInput formControlName="musicAssetId">
         </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>List size</mat-label>
+          <input matInput formControlName="listSize" inputmode="numeric">
+        </mat-form-field>
       </div>
 
       <div class="source-grid">
@@ -92,6 +165,16 @@
         <mat-form-field appearance="outline" class="full">
           <mat-label>Source title</mat-label>
           <input matInput formControlName="sourceTitle">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Source scope</mat-label>
+          <mat-select formControlName="sourceScope">
+            <mat-option value="MOVIE">Movie</mat-option>
+            <mat-option value="SERIES_EPISODE">Series episode</mat-option>
+            <mat-option value="SERIES_SEASON">Series season</mat-option>
+            <mat-option value="SERIES_SHOW">Whole series</mat-option>
+          </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -207,7 +290,14 @@
               <h3>{{ job.title || job.videoType }}</h3>
               <span>{{ job.orientation }} &middot; {{ job.durationPreset }} &middot; {{ job.publishTarget }}</span>
             </div>
-            <span class="status-pill" [class.waiting]="job.status === 'WAITING_FOR_APPROVAL'" [class.failed]="job.status === 'FAILED'">{{ job.status }}</span>
+            <div class="job-actions">
+              <span class="status-pill" [class.waiting]="job.status === 'WAITING_FOR_APPROVAL'" [class.failed]="job.status === 'FAILED'" [class.cancelled]="job.status === 'CANCELLED'">{{ job.status }}</span>
+              @if (canCancel(job)) {
+                <button mat-icon-button type="button" matTooltip="Cancel job" [disabled]="isCancelling(job.id)" (click)="cancelJob(job)">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              }
+            </div>
           </div>
 
           <p>{{ job.prompt }}</p>
@@ -217,6 +307,10 @@
             <span>{{ job.targetSeconds }}s</span>
             <span>{{ job.voiceProvider }}</span>
             <span>{{ job.visualSource }}</span>
+            <span>{{ job.contentCategory }}</span>
+            <span>{{ job.editorialWindow }}</span>
+            <span>{{ job.researchFocus }}</span>
+            <span>{{ job.sourceScope }}</span>
           </div>
 
           @if (job.steps.length) {
@@ -276,12 +370,20 @@
               </div>
 
               <p>{{ uploadWarning() }}</p>
+              @if (approvalWarnings(job, reviewTitle.value, reviewDescription.value, reviewTags.value, reviewCitations.value); as warnings) {
+                @if (warnings.length) {
+                  <div class="warning-band">
+                    <mat-icon>warning</mat-icon>
+                    <span>{{ warnings.join(' ') }}</span>
+                  </div>
+                }
+              }
               <div class="approval-actions">
                 <button mat-stroked-button (click)="saveReview(job, reviewTitle.value, reviewDescription.value, reviewTags.value, reviewCitations.value, madeForKids.checked, syntheticMedia.checked)">
                   <mat-icon>save</mat-icon>
                   Save review
                 </button>
-                <button mat-flat-button color="primary" (click)="approveUpload(job.id)">
+                <button mat-flat-button color="primary" [disabled]="approvalWarnings(job, reviewTitle.value, reviewDescription.value, reviewTags.value, reviewCitations.value).length > 0" (click)="approveUpload(job, reviewTitle.value, reviewDescription.value, reviewTags.value, reviewCitations.value, madeForKids.checked, syntheticMedia.checked)">
                   <mat-icon>cloud_upload</mat-icon>
                   Approve upload
                 </button>

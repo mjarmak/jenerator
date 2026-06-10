@@ -16,7 +16,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { interval } from 'rxjs';
+import { interval, switchMap } from 'rxjs';
 
 type VideoType = 'SUMMARY' | 'RECAP' | 'TOP_LIST' | 'RECOMMENDATION';
 type Orientation = 'PORTRAIT_9_16' | 'LANDSCAPE_16_9';
@@ -24,6 +24,10 @@ type DurationPreset = 'ONE_MINUTE' | 'AUTO_SHORT';
 type PublishTarget = 'YOUTUBE_SHORT' | 'YOUTUBE_VIDEO';
 type VoiceProvider = 'OPENAI_TTS' | 'QWEN_LOCAL';
 type MediaStyle = 'CINEMATIC_RECAP' | 'FAST_NEWS' | 'CLEAN_RECOMMENDATION' | 'TOP_LIST_COUNTDOWN';
+type ContentCategory = 'MOVIES' | 'SERIES' | 'MOVIES_AND_SERIES';
+type EditorialWindow = 'WEEK' | 'MONTH' | 'YEAR';
+type ResearchFocus = 'TRENDING' | 'GROSSING' | 'NEW_RELEASES' | 'POPULAR';
+type SourceScope = 'MOVIE' | 'SERIES_EPISODE' | 'SERIES_SEASON' | 'SERIES_SHOW';
 type VisualSource = 'SOURCE_SCREENSHOTS' | 'AI_GENERATED_IMAGES' | 'UPLOADED_ASSETS';
 type JobStatus = 'QUEUED' | 'CLAIMED' | 'RUNNING' | 'WAITING_FOR_APPROVAL' | 'APPROVED_FOR_UPLOAD' | 'UPLOADING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
@@ -35,9 +39,14 @@ interface CreateJobRequest {
   publishTarget: PublishTarget;
   voiceProvider: VoiceProvider;
   mediaStyle: MediaStyle;
+  contentCategory: ContentCategory;
+  editorialWindow: EditorialWindow;
+  researchFocus: ResearchFocus;
+  listSize: number;
   visualSource: VisualSource;
   sourceUrl: string | null;
   sourceTitle: string | null;
+  sourceScope: SourceScope;
   seasonNumber: number | null;
   episodeNumber: number | null;
   musicAssetId: string | null;
@@ -91,6 +100,18 @@ interface SettingsResponse {
   youtubeUploadWarning: string;
 }
 
+interface WorkerStatusResponse {
+  id: string;
+  name: string;
+  registeredAt: string;
+  lastSeenAt: string;
+  online: boolean;
+  ffmpegAvailable: boolean;
+  qwenAvailable: boolean;
+  youtubeConfigured: boolean;
+  details: Record<string, string>;
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -124,8 +145,10 @@ export class AppComponent {
 
   readonly ownerKey = signal(localStorage.getItem(AppComponent.ownerKeyStorageKey) ?? '');
   readonly jobs = signal<JobResponse[]>([]);
+  readonly workers = signal<WorkerStatusResponse[]>([]);
   readonly loading = signal(false);
   readonly creating = signal(false);
+  readonly cancellingJobIds = signal<string[]>([]);
   readonly uploadedMusicName = signal('');
   readonly uploadedVisualAssets = signal<AssetResponse[]>([]);
   readonly uploadWarning = signal('By clicking upload, you certify that the content complies with YouTube Terms of Service and does not violate copyright or privacy rights.');
@@ -138,9 +161,14 @@ export class AppComponent {
     publishTarget: ['YOUTUBE_SHORT' as PublishTarget, Validators.required],
     voiceProvider: ['OPENAI_TTS' as VoiceProvider, Validators.required],
     mediaStyle: ['CINEMATIC_RECAP' as MediaStyle, Validators.required],
+    contentCategory: ['MOVIES_AND_SERIES' as ContentCategory, Validators.required],
+    editorialWindow: ['WEEK' as EditorialWindow, Validators.required],
+    researchFocus: ['TRENDING' as ResearchFocus, Validators.required],
+    listSize: ['8', Validators.required],
     visualSource: ['SOURCE_SCREENSHOTS' as VisualSource, Validators.required],
     sourceUrl: [''],
     sourceTitle: [''],
+    sourceScope: ['SERIES_EPISODE' as SourceScope, Validators.required],
     seasonNumber: [''],
     episodeNumber: [''],
     musicAssetId: ['']
@@ -155,10 +183,10 @@ export class AppComponent {
 
     interval(10_000)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadJobs());
+      .subscribe(() => this.refreshAll());
 
     this.loadSettings();
-    this.loadJobs();
+    this.refreshAll();
     this.configurationWarning.set(this.formatWarning());
   }
 
@@ -174,6 +202,7 @@ export class AppComponent {
       ...raw,
       sourceUrl: raw.sourceUrl || null,
       sourceTitle: raw.sourceTitle || null,
+      listSize: this.optionalNumber(raw.listSize) ?? 8,
       seasonNumber: this.optionalNumber(raw.seasonNumber),
       episodeNumber: this.optionalNumber(raw.episodeNumber),
       musicAssetId: raw.musicAssetId || null,
@@ -210,6 +239,22 @@ export class AppComponent {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  loadWorkers(): void {
+    if (!this.ownerKey().trim()) {
+      this.workers.set([]);
+      return;
+    }
+    this.http.get<WorkerStatusResponse[]>('/api/owner/workers', this.authOptions()).subscribe({
+      next: (workers) => this.workers.set(workers),
+      error: () => this.workers.set([])
+    });
+  }
+
+  refreshAll(): void {
+    this.loadJobs();
+    this.loadWorkers();
   }
 
   loadSettings(): void {
@@ -269,16 +314,54 @@ export class AppComponent {
     this.configurationWarning.set(this.formatWarning());
   }
 
-  approveUpload(jobId: string): void {
+  approveUpload(
+    job: JobResponse,
+    title: string,
+    description: string,
+    tags: string,
+    citations: string,
+    madeForKids: boolean,
+    containsSyntheticMedia: boolean
+  ): void {
     if (!this.ensureOwnerKey()) {
       return;
     }
-    this.http.post<JobResponse>(`/api/jobs/${jobId}/approve-upload`, {}, this.authOptions()).subscribe({
-      next: (job) => {
-        this.jobs.update((jobs) => jobs.map((current) => current.id === job.id ? job : current));
-        this.snackBar.open('Upload approved', 'Close', { duration: 2200 });
+    const warnings = this.approvalWarnings(job, title, description, tags, citations);
+    if (warnings.length) {
+      this.snackBar.open(warnings.join(' '), 'Close', { duration: 6000 });
+      return;
+    }
+    const request = this.reviewPayload(title, description, tags, citations, madeForKids, containsSyntheticMedia);
+    this.http.patch<JobResponse>(`/api/jobs/${job.id}/review`, request, this.authOptions())
+      .pipe(switchMap(() => this.http.post<JobResponse>(`/api/jobs/${job.id}/approve-upload`, {}, this.authOptions())))
+      .subscribe({
+        next: (updated) => {
+          this.jobs.update((jobs) => jobs.map((current) => current.id === updated.id ? updated : current));
+          this.snackBar.open('Upload approved', 'Close', { duration: 2200 });
+        },
+        error: (error) => this.snackBar.open(this.errorMessage(error), 'Close', { duration: 5000 })
+      });
+  }
+
+  cancelJob(job: JobResponse): void {
+    if (!this.ensureOwnerKey() || !this.canCancel(job) || this.isCancelling(job.id)) {
+      return;
+    }
+    const confirmed = window.confirm(`Cancel "${job.title || job.videoType}"?`);
+    if (!confirmed) {
+      return;
+    }
+    this.cancellingJobIds.update((ids) => [...ids, job.id]);
+    this.http.post<JobResponse>(`/api/jobs/${job.id}/cancel`, {}, this.authOptions()).subscribe({
+      next: (updated) => {
+        this.jobs.update((jobs) => jobs.map((current) => current.id === updated.id ? updated : current));
+        this.cancellingJobIds.update((ids) => ids.filter((id) => id !== job.id));
+        this.snackBar.open('Job cancelled', 'Close', { duration: 2200 });
       },
-      error: (error) => this.snackBar.open(this.errorMessage(error), 'Close', { duration: 5000 })
+      error: (error) => {
+        this.cancellingJobIds.update((ids) => ids.filter((id) => id !== job.id));
+        this.snackBar.open(this.errorMessage(error), 'Close', { duration: 5000 });
+      }
     });
   }
 
@@ -294,14 +377,7 @@ export class AppComponent {
     if (!this.ensureOwnerKey()) {
       return;
     }
-    const request = {
-      title: title.trim(),
-      description: description.trim(),
-      tags: this.splitList(tags),
-      citations: this.splitLines(citations),
-      madeForKids,
-      containsSyntheticMedia
-    };
+    const request = this.reviewPayload(title, description, tags, citations, madeForKids, containsSyntheticMedia);
     this.http.patch<JobResponse>(`/api/jobs/${job.id}/review`, request, this.authOptions()).subscribe({
       next: (updated) => {
         this.jobs.update((jobs) => jobs.map((current) => current.id === updated.id ? updated : current));
@@ -327,11 +403,12 @@ export class AppComponent {
     if (normalized) {
       localStorage.setItem(AppComponent.ownerKeyStorageKey, normalized);
       this.snackBar.open('Owner key saved', 'Close', { duration: 2200 });
-      this.loadJobs();
+      this.refreshAll();
       return;
     }
     localStorage.removeItem(AppComponent.ownerKeyStorageKey);
     this.jobs.set([]);
+    this.workers.set([]);
     this.snackBar.open('Owner key cleared', 'Close', { duration: 2200 });
   }
 
@@ -353,12 +430,79 @@ export class AppComponent {
     return job.artifacts.find((artifact) => artifact.type === 'PREVIEW_VIDEO') ?? null;
   }
 
+  approvalWarnings(job: JobResponse, title: string, description: string, tags: string, citations: string): string[] {
+    const warnings: string[] = [];
+    if (!this.previewArtifact(job)) {
+      warnings.push('Preview video is required.');
+    }
+    if (!title.trim()) {
+      warnings.push('Title is required.');
+    }
+    if (!description.trim()) {
+      warnings.push('Description is required.');
+    }
+    if (!this.splitList(tags).length) {
+      warnings.push('At least one tag is required.');
+    }
+    if (!this.splitLines(citations).length) {
+      warnings.push('At least one citation is required.');
+    }
+    return warnings;
+  }
+
   listText(values: string[] | null | undefined): string {
     return values?.join(', ') ?? '';
   }
 
   lineText(values: string[] | null | undefined): string {
     return values?.join('\n') ?? '';
+  }
+
+  canCancel(job: JobResponse): boolean {
+    return !['COMPLETED', 'FAILED', 'CANCELLED', 'UPLOADING'].includes(job.status);
+  }
+
+  isCancelling(jobId: string): boolean {
+    return this.cancellingJobIds().includes(jobId);
+  }
+
+  onlineWorkers(): WorkerStatusResponse[] {
+    return this.workers().filter((worker) => worker.online);
+  }
+
+  workerSummary(): string {
+    if (!this.ownerKey().trim()) {
+      return 'Worker status locked';
+    }
+    if (!this.workers().length) {
+      return 'No PC worker registered';
+    }
+    return `${this.onlineWorkers().length}/${this.workers().length} PC workers online`;
+  }
+
+  workerSubtext(): string {
+    if (!this.ownerKey().trim()) {
+      return 'Save the owner key to view local render and upload readiness.';
+    }
+    if (!this.workers().length) {
+      return 'Start the local worker with your pairing code before rendering videos.';
+    }
+    const activeWorker = this.onlineWorkers()[0];
+    if (!activeWorker) {
+      return 'The worker has not sent a heartbeat recently.';
+    }
+    const missing = this.requiredWorkerGaps(activeWorker);
+    if (missing.length) {
+      return `Needs ${missing.join(', ')} before full automation.`;
+    }
+    if (!activeWorker.qwenAvailable) {
+      return 'Ready for render and upload. Qwen local TTS is optional and currently unavailable.';
+    }
+    return 'Ready for render, local Qwen voice, and upload after approval.';
+  }
+
+  workerCapabilityIcon(enabled: boolean): string {
+    return enabled ? 'check_circle' : 'radio_button_unchecked';
   }
 
   private formatWarning(): string | null {
@@ -369,6 +513,28 @@ export class AppComponent {
     }
     if (target === 'YOUTUBE_VIDEO' && orientation !== 'LANDSCAPE_16_9') {
       return 'Normal YouTube videos should use 16:9 landscape. Portrait exports under three minutes may become Shorts.';
+    }
+    const listSize = this.optionalNumber(this.jobForm.controls.listSize.value);
+    if (listSize == null || listSize < 3 || listSize > 20) {
+      return 'List size must be between 3 and 20.';
+    }
+    const sourceScope = this.jobForm.controls.sourceScope.value;
+    const seasonNumber = this.optionalNumber(this.jobForm.controls.seasonNumber.value);
+    const episodeNumber = this.optionalNumber(this.jobForm.controls.episodeNumber.value);
+    if (sourceScope === 'MOVIE' && (seasonNumber != null || episodeNumber != null)) {
+      return 'Movie source scope should not include season or episode numbers.';
+    }
+    if (sourceScope === 'SERIES_EPISODE' && (seasonNumber == null || episodeNumber == null)) {
+      return 'Series episode source scope needs both season and episode numbers.';
+    }
+    if (sourceScope === 'SERIES_SEASON' && seasonNumber == null) {
+      return 'Series season source scope needs a season number.';
+    }
+    if (sourceScope === 'SERIES_SEASON' && episodeNumber != null) {
+      return 'Series season source scope should not include an episode number.';
+    }
+    if (sourceScope === 'SERIES_SHOW' && (seasonNumber != null || episodeNumber != null)) {
+      return 'Whole-series source scope should not include season or episode numbers.';
     }
     if (this.jobForm.controls.visualSource.value === 'SOURCE_SCREENSHOTS'
       && !this.jobForm.controls.sourceUrl.value.trim()
@@ -406,6 +572,31 @@ export class AppComponent {
       .filter(Boolean);
   }
 
+  private reviewPayload(
+    title: string,
+    description: string,
+    tags: string,
+    citations: string,
+    madeForKids: boolean,
+    containsSyntheticMedia: boolean
+  ): {
+    title: string;
+    description: string;
+    tags: string[];
+    citations: string[];
+    madeForKids: boolean;
+    containsSyntheticMedia: boolean;
+  } {
+    return {
+      title: title.trim(),
+      description: description.trim(),
+      tags: this.splitList(tags),
+      citations: this.splitLines(citations),
+      madeForKids,
+      containsSyntheticMedia
+    };
+  }
+
   private optionalNumber(value: string): number | null {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -421,5 +612,16 @@ export class AppComponent {
       return maybeHttpError.error.messages.join(' ');
     }
     return maybeHttpError.error?.message ?? 'Request failed';
+  }
+
+  private requiredWorkerGaps(worker: WorkerStatusResponse): string[] {
+    const gaps: string[] = [];
+    if (!worker.ffmpegAvailable) {
+      gaps.push('FFmpeg');
+    }
+    if (!worker.youtubeConfigured) {
+      gaps.push('YouTube upload setup');
+    }
+    return gaps;
   }
 }

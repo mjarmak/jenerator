@@ -1,5 +1,6 @@
 package com.jenerator.controlplane.service;
 
+import com.jenerator.common.model.JobStatus;
 import com.jenerator.controlplane.domain.JobArtifactRecord;
 import com.jenerator.controlplane.domain.StoredArtifactRecord;
 import com.jenerator.controlplane.exception.NotFoundException;
@@ -27,21 +28,27 @@ import java.util.concurrent.ConcurrentMap;
 public class ArtifactStorageService {
     private final Path artifactStoragePath;
     private final JobService jobService;
+    private final ControlPlaneStateStore stateStore;
     private final ConcurrentMap<String, StoredArtifactRecord> artifacts = new ConcurrentHashMap<>();
 
     public ArtifactStorageService(
             @Value("${jenerator.artifact-storage-path:data/artifacts}") Path artifactStoragePath,
-            JobService jobService
+            JobService jobService,
+            ControlPlaneStateStore stateStore
     ) {
         this.artifactStoragePath = artifactStoragePath.toAbsolutePath().normalize();
         this.jobService = jobService;
+        this.stateStore = stateStore;
+        loadPersistedArtifacts();
     }
 
     public void store(String jobId, String type, MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalStateException("Artifact file is empty.");
         }
-        jobService.get(jobId);
+        if (jobService.get(jobId).status() == JobStatus.CANCELLED) {
+            return;
+        }
         String artifactId = UUID.randomUUID().toString();
         String originalName = file.getOriginalFilename() == null ? "artifact.bin" : file.getOriginalFilename();
         String safeName = originalName.replaceAll("[^A-Za-z0-9._-]", "_");
@@ -66,6 +73,7 @@ public class ArtifactStorageService {
                 target
         );
         artifacts.put(artifactId, stored);
+        persist();
         jobService.addArtifactRecord(jobId, new JobArtifactRecord(
                 artifactId,
                 type,
@@ -93,5 +101,15 @@ public class ArtifactStorageService {
         } catch (MalformedURLException exception) {
             throw new IllegalStateException("Artifact file URL is invalid.", exception);
         }
+    }
+
+    private void loadPersistedArtifacts() {
+        for (StoredArtifactRecord record : stateStore.readArtifacts()) {
+            artifacts.put(record.artifactId(), record);
+        }
+    }
+
+    private void persist() {
+        stateStore.writeArtifacts(artifacts.values());
     }
 }

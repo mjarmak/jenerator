@@ -1,12 +1,16 @@
 package com.jenerator.controlplane.domain;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Map;
 
 public class WorkerRecord {
+    private static final Duration ONLINE_WINDOW = Duration.ofSeconds(45);
+
     private final String id;
     private final String token;
     private final String name;
+    private final Instant registeredAt;
     private Instant lastSeenAt;
     private boolean ffmpegAvailable;
     private boolean qwenAvailable;
@@ -17,6 +21,7 @@ public class WorkerRecord {
         this.id = id;
         this.token = token;
         this.name = name;
+        this.registeredAt = lastSeenAt;
         this.lastSeenAt = lastSeenAt;
     }
 
@@ -42,5 +47,29 @@ public class WorkerRecord {
 
     public synchronized Instant lastSeenAt() {
         return lastSeenAt;
+    }
+
+    public Instant registeredAt() {
+        return registeredAt;
+    }
+
+    public synchronized boolean online(Instant now) {
+        return lastSeenAt.plus(ONLINE_WINDOW).isAfter(now);
+    }
+
+    public synchronized boolean ffmpegAvailable() {
+        return ffmpegAvailable;
+    }
+
+    public synchronized boolean qwenAvailable() {
+        return qwenAvailable;
+    }
+
+    public synchronized boolean youtubeConfigured() {
+        return youtubeConfigured;
+    }
+
+    public synchronized Map<String, String> details() {
+        return Map.copyOf(details);
     }
 }

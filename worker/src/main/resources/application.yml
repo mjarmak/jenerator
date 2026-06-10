@@ -30,6 +30,7 @@ jenerator:
     openai-model: gpt-image-2
     quality: low
     output-format: png
+    generated-count: 4
     fallback-to-manifest: true
   research:
     tmdb-api-token:
@@ -39,6 +40,14 @@ jenerator:
     source-capture-command: []
     source-capture-shots: 6
     source-capture-delay-seconds: 0
+    source-capture-interval-seconds: 4
+    source-capture-manual-seconds: 0
+    source-capture-auto-play: false
+    source-capture-skip-key:
+    source-capture-skip-count: 0
+    source-capture-user-data-dir:
+    source-capture-channel:
+    source-capture-headless: false
   youtube:
     mode: DRY_RUN
     client-id:

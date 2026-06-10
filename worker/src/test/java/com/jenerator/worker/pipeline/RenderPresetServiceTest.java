@@ -1,11 +1,15 @@
 package com.jenerator.worker.pipeline;
 
 import com.jenerator.common.dto.JobResponse;
+import com.jenerator.common.model.ContentCategory;
 import com.jenerator.common.model.DurationPreset;
+import com.jenerator.common.model.EditorialWindow;
 import com.jenerator.common.model.JobStatus;
 import com.jenerator.common.model.MediaStyle;
 import com.jenerator.common.model.Orientation;
 import com.jenerator.common.model.PublishTarget;
+import com.jenerator.common.model.ResearchFocus;
+import com.jenerator.common.model.SourceScope;
 import com.jenerator.common.model.VideoType;
 import com.jenerator.common.model.VisualSource;
 import com.jenerator.common.model.VoiceProvider;
@@ -48,9 +52,14 @@ class RenderPresetServiceTest {
                 target,
                 VoiceProvider.OPENAI_TTS,
                 MediaStyle.CINEMATIC_RECAP,
+                ContentCategory.MOVIES_AND_SERIES,
+                EditorialWindow.WEEK,
+                ResearchFocus.TRENDING,
+                8,
                 VisualSource.SOURCE_SCREENSHOTS,
                 "https://example.com/show",
                 "Example Show",
+                SourceScope.SERIES_EPISODE,
                 1,
                 1,
                 null,

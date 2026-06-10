@@ -7,6 +7,8 @@ import com.jenerator.common.model.JobStatus;
 import com.jenerator.common.model.MediaStyle;
 import com.jenerator.common.model.Orientation;
 import com.jenerator.common.model.PublishTarget;
+import com.jenerator.common.model.ResearchFocus;
+import com.jenerator.common.model.SourceScope;
 import com.jenerator.common.model.VideoType;
 import com.jenerator.common.model.VisualSource;
 import com.jenerator.common.model.VoiceProvider;
@@ -26,10 +28,12 @@ public record JobResponse(
         MediaStyle mediaStyle,
         ContentCategory contentCategory,
         EditorialWindow editorialWindow,
+        ResearchFocus researchFocus,
         int listSize,
         VisualSource visualSource,
         String sourceUrl,
         String sourceTitle,
+        SourceScope sourceScope,
         Integer seasonNumber,
         Integer episodeNumber,
         String musicAssetId,

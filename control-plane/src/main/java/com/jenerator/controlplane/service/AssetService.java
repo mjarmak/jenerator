@@ -28,10 +28,16 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class AssetService {
     private final Path storageDirectory;
+    private final ControlPlaneStateStore stateStore;
     private final ConcurrentMap<String, AssetRecord> assets = new ConcurrentHashMap<>();
 
-    public AssetService(@Value("${jenerator.asset-storage-path:data/assets}") Path storageDirectory) {
+    public AssetService(
+            @Value("${jenerator.asset-storage-path:data/assets}") Path storageDirectory,
+            ControlPlaneStateStore stateStore
+    ) {
         this.storageDirectory = storageDirectory.toAbsolutePath().normalize();
+        this.stateStore = stateStore;
+        loadPersistedAssets();
     }
 
     public AssetResponse store(MultipartFile file) throws IOException {
@@ -58,6 +64,7 @@ public class AssetService {
                 Instant.now()
         );
         assets.put(id, record);
+        persist();
         return toResponse(record);
     }
 
@@ -97,5 +104,15 @@ public class AssetService {
                 "/api/assets/" + record.id() + "/file",
                 record.createdAt()
         );
+    }
+
+    private void loadPersistedAssets() {
+        for (AssetRecord record : stateStore.readAssets()) {
+            assets.put(record.id(), record);
+        }
+    }
+
+    private void persist() {
+        stateStore.writeAssets(assets.values());
     }
 }

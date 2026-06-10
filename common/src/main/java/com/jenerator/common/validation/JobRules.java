@@ -59,6 +59,32 @@ public final class JobRules {
             errors.add("Top list size must be between 3 and 20.");
         }
 
+        switch (request.sourceScope()) {
+            case MOVIE -> {
+                if (request.seasonNumber() != null || request.episodeNumber() != null) {
+                    errors.add("Movie jobs should not include season or episode numbers.");
+                }
+            }
+            case SERIES_EPISODE -> {
+                if (request.seasonNumber() == null || request.episodeNumber() == null) {
+                    errors.add("Series episode jobs need both season and episode numbers.");
+                }
+            }
+            case SERIES_SEASON -> {
+                if (request.seasonNumber() == null) {
+                    errors.add("Series season jobs need a season number.");
+                }
+                if (request.episodeNumber() != null) {
+                    errors.add("Series season jobs should not include an episode number.");
+                }
+            }
+            case SERIES_SHOW -> {
+                if (request.seasonNumber() != null || request.episodeNumber() != null) {
+                    errors.add("Whole-series jobs should not include season or episode numbers.");
+                }
+            }
+        }
+
         return errors;
     }
 

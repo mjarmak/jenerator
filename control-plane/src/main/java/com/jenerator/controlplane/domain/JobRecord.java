@@ -40,6 +40,47 @@ public class JobRecord {
         return job;
     }
 
+    public static JobRecord restore(JobSnapshot snapshot) {
+        JobRecord job = new JobRecord(snapshot.id(), snapshot.request(), snapshot.createdAt());
+        job.status = snapshot.status();
+        job.updatedAt = snapshot.updatedAt();
+        job.title = snapshot.title();
+        job.description = snapshot.description();
+        job.tags = snapshot.tags() == null ? new ArrayList<>() : new ArrayList<>(snapshot.tags());
+        job.citations = snapshot.citations() == null ? new ArrayList<>() : new ArrayList<>(snapshot.citations());
+        job.madeForKids = snapshot.madeForKids();
+        job.containsSyntheticMedia = snapshot.containsSyntheticMedia();
+        job.error = snapshot.error();
+        job.claimedByWorkerId = snapshot.claimedByWorkerId();
+        if (snapshot.steps() != null) {
+            job.steps.addAll(snapshot.steps());
+        }
+        if (snapshot.artifacts() != null) {
+            job.artifacts.addAll(snapshot.artifacts());
+        }
+        return job;
+    }
+
+    public synchronized JobSnapshot snapshot() {
+        return new JobSnapshot(
+                id,
+                request,
+                createdAt,
+                status,
+                updatedAt,
+                title,
+                description,
+                List.copyOf(tags),
+                List.copyOf(citations),
+                madeForKids,
+                containsSyntheticMedia,
+                error,
+                claimedByWorkerId,
+                List.copyOf(steps),
+                List.copyOf(artifacts)
+        );
+    }
+
     public synchronized void claimFor(String workerId, JobStatus newStatus) {
         this.claimedByWorkerId = workerId;
         this.status = newStatus;

@@ -57,6 +57,114 @@
   min-height: 48px;
 }
 
+.worker-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #26364d;
+}
+
+.worker-strip.online {
+  border-color: #a8d7bd;
+  background: #f0faf4;
+}
+
+.worker-strip.locked {
+  border-color: #e5d099;
+  background: #fffaf0;
+}
+
+.worker-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.worker-summary > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.worker-summary strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.worker-summary span {
+  color: #536174;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.worker-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.worker-row {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dde3ed;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.worker-row > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.worker-row strong {
+  color: #1f2f46;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.worker-row span {
+  color: #5d6a7d;
+  font-size: 12px;
+}
+
+.capability-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.capability {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: #627086;
+  font-weight: 700;
+}
+
+.capability.enabled {
+  background: #e7f6ed;
+  color: #22653b;
+}
+
+.capability mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
 h1,
 h2,
 h3,
@@ -173,6 +281,12 @@ mat-button-toggle {
   gap: 12px;
 }
 
+.job-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .job-head span,
 .job-card p,
 .job-meta {
@@ -213,6 +327,11 @@ mat-button-toggle {
 .status-pill.failed {
   background: #ffe2e2;
   color: #7a1f1f;
+}
+
+.status-pill.cancelled {
+  background: #eceff3;
+  color: #5d6675;
 }
 
 .approval-box {
@@ -264,6 +383,7 @@ mat-button-toggle {
 @media (max-width: 560px) {
   .topbar {
     align-items: stretch;
+    flex-wrap: wrap;
   }
 
   .spacer {
@@ -286,5 +406,13 @@ mat-button-toggle {
   .job-head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .job-actions {
+    justify-content: space-between;
+  }
+
+  .worker-strip {
+    align-items: flex-start;
   }
 }

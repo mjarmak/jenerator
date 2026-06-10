@@ -1,8 +1,11 @@
 package com.jenerator.controlplane.controller;
 
+import com.jenerator.common.model.ContentCategory;
 import com.jenerator.common.model.DurationPreset;
+import com.jenerator.common.model.EditorialWindow;
 import com.jenerator.common.model.Orientation;
 import com.jenerator.common.model.PublishTarget;
+import com.jenerator.common.model.VisualSource;
 import com.jenerator.common.model.VoiceProvider;
 import com.jenerator.controlplane.api.SettingsResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +34,9 @@ public class SettingsController {
                 Arrays.stream(DurationPreset.values()).map(Enum::name).toList(),
                 Arrays.stream(PublishTarget.values()).map(Enum::name).toList(),
                 Arrays.stream(VoiceProvider.values()).map(Enum::name).toList(),
+                Arrays.stream(ContentCategory.values()).map(Enum::name).toList(),
+                Arrays.stream(EditorialWindow.values()).map(Enum::name).toList(),
+                Arrays.stream(VisualSource.values()).map(Enum::name).toList(),
                 YOUTUBE_UPLOAD_WARNING
         );
     }

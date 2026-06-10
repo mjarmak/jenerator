@@ -1,12 +1,14 @@
 package com.jenerator.controlplane.controller;
 
 import com.jenerator.common.dto.UpdateJobArtifactRequest;
+import com.jenerator.common.dto.JobResponse;
 import com.jenerator.common.dto.UpdateJobReviewRequest;
 import com.jenerator.common.dto.UpdateJobStepRequest;
 import com.jenerator.common.dto.WorkerClaimResponse;
 import com.jenerator.common.dto.WorkerHeartbeatRequest;
 import com.jenerator.common.dto.WorkerRegistrationRequest;
 import com.jenerator.common.dto.WorkerRegistrationResponse;
+import com.jenerator.controlplane.domain.WorkerRecord;
 import com.jenerator.controlplane.service.ArtifactStorageService;
 import com.jenerator.controlplane.service.AssetService;
 import com.jenerator.controlplane.service.JobService;
@@ -66,8 +68,17 @@ public class WorkersController {
 
     @PostMapping("/jobs/claim")
     public WorkerClaimResponse claim(@RequestHeader(WORKER_TOKEN_HEADER) String workerToken) {
-        String workerId = workerRegistry.requireWorkerId(workerToken);
-        return jobService.claim(workerId);
+        WorkerRecord worker = workerRegistry.requireWorker(workerToken);
+        return jobService.claim(worker.id(), worker.ffmpegAvailable(), worker.youtubeConfigured());
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public JobResponse getJob(
+            @RequestHeader(WORKER_TOKEN_HEADER) String workerToken,
+            @org.springframework.web.bind.annotation.PathVariable String jobId
+    ) {
+        workerRegistry.requireWorkerId(workerToken);
+        return jobService.get(jobId);
     }
 
     @PostMapping("/jobs/{jobId}/steps")

@@ -29,6 +29,9 @@ public class OwnerAuthFilter extends OncePerRequestFilter {
         if (!path.startsWith("/api/")) {
             return true;
         }
+        if (path.startsWith("/api/owner/")) {
+            return false;
+        }
         if (path.startsWith("/api/workers/") || path.equals("/api/settings")) {
             return true;
         }
